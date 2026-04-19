@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Side Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* ── Panel shell ── */
+.panel {
+  width: 120px;
+  height: 420px;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  border: 1.5px solid #e8e8e8;
+  background: #fafafa;
+  transition: border-color 0.2s;
+}
+.panel:hover { border-color: #d8d8d8; }
+.panel.has-media { cursor: default; }
+.panel.has-media:hover { border-color: #e8e8e8; }
+
+/* ── Image viewport ── */
+.img-viewport {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: grab;
+  display: none;
+}
+.img-viewport.active { display: block; }
+.img-viewport:active  { cursor: grabbing; }
+.img-viewport img {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+  max-width: none;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 20px;
+}
+.empty-state:hover .empty-icon { background: #e8e8e8; }
+
+.empty-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.empty-icon svg {
+  width: 18px; height: 18px;
+  stroke: #c0c0c0; fill: none;
+  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.empty-text {
+  font-size: 10px; font-weight: 600;
+  color: #cccccc; letter-spacing: 0.03em; line-height: 1.5;
+}
+.empty-hint {
+  font-size: 8px; font-weight: 600;
+  color: #dedede; letter-spacing: 0.04em;
+  line-height: 1.6; margin-top: 2px;
+}
+
+/* ── Gear button ── */
+.gear-btn {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 20px; height: 20px;
+  border: none; background: none;
+  cursor: pointer; padding: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.5);
+  z-index: 30;
+  transition: color 0.2s, transform 0.35s;
+}
+.gear-btn svg { width: 13px; height: 13px; }
+.gear-btn:hover { color: rgba(255,255,255,0.9); }
+.gear-btn.open  { color: rgba(255,255,255,0.9); transform: rotate(60deg); }
+
+/* Show gear only when image is loaded */
+.panel.has-media .gear-btn { display: flex; }
+
+/* ── Gear dropdown panel — lives on body, positioned by JS ── */
+.gear-panel {
+  position: fixed;
+  width: 140px;
+  background: rgba(255,255,255,0.98);
+  border-radius: 12px;
+  padding: 8px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.07);
+  z-index: 9999;
+  opacity: 0; pointer-events: none;
+  transform: scale(0.88) translateY(-6px);
+  transform-origin: top right;
+  transition: opacity 0.16s, transform 0.16s;
+}
+.gear-panel.open {
+  opacity: 1; pointer-events: all;
+  transform: scale(1) translateY(0);
+}
+
+/* Dropdown section label */
+.gp-lbl {
+  font-size: 7px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: #ccc; padding: 6px 12px 3px;
+}
+
+/* Dropdown item */
+.gp-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px; font-weight: 700;
+  color: #666; cursor: pointer;
+  transition: background 0.1s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.gp-item:hover { background: rgba(0,0,0,0.04); color: #444; }
+.gp-item svg {
+  width: 12px; height: 12px;
+  stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  flex-shrink: 0; opacity: 0.7;
+}
+.gp-item.danger { color: #d08080; }
+.gp-item.danger:hover { background: rgba(220,80,80,0.06); color: #c06060; }
+
+/* Divider */
+.gp-div { height: 1px; background: rgba(0,0,0,0.06); margin: 4px 0; }
+
+/* Zoom row inside dropdown */
+.gp-zoom {
+  display: flex; align-items: center;
+  padding: 4px 12px;
+  gap: 5px;
+}
+.gz-btn {
+  width: 20px; height: 20px;
+  border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.07);
+  font-size: 14px; font-weight: 700; color: #666;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; line-height: 1; padding: 0;
+  transition: background 0.1s; flex-shrink: 0;
+}
+.gz-btn:hover { background: rgba(0,0,0,0.14); }
+.gz-pct {
+  font-size: 9px; font-weight: 700; color: #888;
+  min-width: 30px; text-align: center;
+  font-family: 'Nunito', sans-serif;
+}
+</style>
+</head>
+<body>
+
+<div class="panel" id="panel">
+
+  <!-- Empty state -->
+  <div class="empty-state" id="empty">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21,15 16,10 5,21"/>
+      </svg>
+    </div>
+    <span class="empty-text">Tap to add<br>image or GIF</span>
+    <span class="empty-hint">Best at 1 : 3.5 ratio<br>e.g. 300 × 1050 px</span>
+  </div>
+
+  <!-- Image viewport -->
+  <div class="img-viewport" id="viewport"></div>
+
+  <!-- Gear button -->
+  <button class="gear-btn" id="gear-btn" title="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06
+               a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09
+               A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83
+               l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09
+               A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83
+               l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09
+               a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83
+               l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09
+               a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+</div>
+
+<input type="file" id="file-input" accept="image/*" style="display:none"/>
+
+<!-- Gear dropdown — on body so it's never clipped by panel overflow:hidden -->
+<div class="gear-panel" id="gear-panel">
+  <div class="gp-lbl">Zoom</div>
+  <div class="gp-zoom">
+    <button class="gz-btn" id="gz-out">−</button>
+    <span class="gz-pct" id="gz-pct">100%</span>
+    <button class="gz-btn" id="gz-in">+</button>
+  </div>
+  <div class="gp-div"></div>
+  <button class="gp-item" id="gp-reset">
+    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    Reset position
+  </button>
+  <button class="gp-item" id="gp-swap">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+    Swap image
+  </button>
+  <div class="gp-div"></div>
+  <button class="gp-item danger" id="gp-remove">
+    <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    Remove
+  </button>
+</div>
+
+<script>
+const panel     = document.getElementById('panel');
+const empty     = document.getElementById('empty');
+const viewport  = document.getElementById('viewport');
+const gearBtn   = document.getElementById('gear-btn');
+const gearPanel = document.getElementById('gear-panel');
+const gzIn      = document.getElementById('gz-in');
+const gzOut     = document.getElementById('gz-out');
+const gzPct     = document.getElementById('gz-pct');
+const gpReset   = document.getElementById('gp-reset');
+const gpSwap    = document.getElementById('gp-swap');
+const gpRemove  = document.getElementById('gp-remove');
+const fileInput = document.getElementById('file-input');
+
+let imgEl  = null;
+let scale  = 1;
+let ox = 0, oy = 0;
+const ZMIN = 0.2, ZMAX = 4.0, ZSTEP = 0.2;
+
+/* ── Render ── */
+function render() {
+  if (!imgEl) return;
+  imgEl.style.transform =
+    `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px)) scale(${scale})`;
+  gzPct.textContent = Math.round(scale * 100) + '%';
+}
+
+function resetView() { scale = 1; ox = 0; oy = 0; render(); }
+function zoom(d) { scale = Math.min(ZMAX, Math.max(ZMIN, scale + d)); render(); }
+
+/* ── Gear panel toggle — positioned via JS to avoid clipping ── */
+let gearOpen = false;
+function openGear() {
+  const btnRect = gearBtn.getBoundingClientRect();
+  const panelW  = 140;
+  /* Align right edge of dropdown with right edge of gear button */
+  let left = btnRect.right - panelW;
+  let top  = btnRect.bottom + 6;
+  /* Keep within viewport */
+  if (left < 4) left = 4;
+  if (top + 180 > window.innerHeight) top = btnRect.top - 180 - 6;
+  gearPanel.style.left = left + 'px';
+  gearPanel.style.top  = top  + 'px';
+  gearOpen = true;
+  gearBtn.classList.add('open');
+  gearPanel.classList.add('open');
+}
+function closeGear() {
+  gearOpen = false;
+  gearBtn.classList.remove('open');
+  gearPanel.classList.remove('open');
+}
+
+gearBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  gearOpen ? closeGear() : openGear();
+});
+document.addEventListener('click', e => {
+  if (gearOpen && !gearPanel.contains(e.target) && e.target !== gearBtn) closeGear();
+});
+
+/* ── Gear panel actions ── */
+gzIn.addEventListener('click',  e => { e.stopPropagation(); zoom(ZSTEP); });
+gzOut.addEventListener('click', e => { e.stopPropagation(); zoom(-ZSTEP); });
+
+gpReset.addEventListener('click', e => {
+  e.stopPropagation(); resetView(); closeGear();
+});
+
+gpSwap.addEventListener('click', e => {
+  e.stopPropagation(); closeGear(); fileInput.click();
+});
+
+gpRemove.addEventListener('click', e => {
+  e.stopPropagation();
+  closeGear();
+  if (imgEl) { imgEl.remove(); imgEl = null; }
+  viewport.classList.remove('active');
+  panel.classList.remove('has-media');
+  empty.style.display = '';
+  scale = 1; ox = 0; oy = 0;
+});
+
+/* ── Scroll to zoom ── */
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom(e.deltaY < 0 ? ZSTEP : -ZSTEP);
+}, { passive: false });
+
+/* ── Mouse drag ── */
+let drag = false, sx, sy, sox, soy;
+viewport.addEventListener('mousedown', e => {
+  e.preventDefault();
+  drag = true; sx = e.clientX; sy = e.clientY; sox = ox; soy = oy;
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  ox = sox + (e.clientX - sx); oy = soy + (e.clientY - sy); render();
+});
+window.addEventListener('mouseup', () => drag = false);
+
+/* ── Touch drag ── */
+let tx, ty, tox, toy;
+viewport.addEventListener('touchstart', e => {
+  const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tox = ox; toy = oy;
+}, { passive: true });
+viewport.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  ox = tox + (t.clientX - tx); oy = toy + (t.clientY - ty); render();
+}, { passive: true });
+
+/* ── Load image ── */
+function loadFile(file) {
+  if (!file) return;
+  if (imgEl) { imgEl.remove(); imgEl = null; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imgEl = document.createElement('img');
+    imgEl.src = ev.target.result;
+    imgEl.draggable = false;
+    imgEl.onload = () => {
+      const pw = panel.offsetWidth, ph = panel.offsetHeight;
+      const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
+      if (ratio < pw / ph) { imgEl.style.width = pw + 'px'; imgEl.style.height = 'auto'; }
+      else                 { imgEl.style.height = ph + 'px'; imgEl.style.width = 'auto'; }
+      resetView();
+    };
+    viewport.appendChild(imgEl);
+    empty.style.display = 'none';
+    viewport.classList.add('active');
+    panel.classList.add('has-media');
+  };
+  reader.readAsDataURL(file);
+}
+
+fileInput.addEventListener('change', function () {
+  loadFile(this.files[0]);
+  this.value = '';
+});
+
+/* Tap empty state to load */
+empty.addEventListener('click', () => fileInput.click());
+</script>
+</body>
+</html>
