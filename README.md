@@ -8,13 +8,8 @@ A minimal, beige-toned website for showcasing and selling Notion widgets and tem
 - `widgets.html` — Notion Widgets shop
 - `templates.html` — Notion Templates shop
 
-## Publishing to GitHub Pages
-
-1. Create a new GitHub repository (e.g. `widget-studio`)
-2. Upload all files in this folder to the repo root
-3. Go to **Settings → Pages**
-4. Under **Source**, select `main` branch and `/ (root)`
-5. Click **Save** — your site will be live at `https://yourusername.github.io/widget-studio/`
+## Website
+https://msuchil.github.io/notion-widgets/
 
 ## Customizing
 
