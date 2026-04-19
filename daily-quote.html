@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Daily Quote</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Nunito:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  padding: 24px 20px;
+}
+
+.widget {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.quote-text {
+  font-size: 22px;
+  font-weight: 300;
+  font-style: italic;
+  color: #8b6f4e;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  transition: opacity 0.45s ease;
+}
+
+.quote-source {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 2.5px;
+  color: #c4a882;
+  text-transform: uppercase;
+  transition: opacity 0.45s ease;
+}
+
+.fading { opacity: 0 !important; }
+</style>
+</head>
+<body>
+
+<div class="widget">
+  <div class="quote-text" id="quote-text"></div>
+  <div class="quote-source" id="quote-source"></div>
+</div>
+
+<script>
+const QUOTES = [
+  { text: "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.", source: "Jeremiah 29:11" },
+  { text: "The Lord will open the heavens, the storehouse of his bounty, to send rain on your land in season and to bless all the work of your hands.", source: "Deuteronomy 28:12" },
+  { text: "Bring the whole tithe into the storehouse, that there may be food in my house. Test me in this, says the Lord Almighty, and see if I will not throw open the floodgates of heaven.", source: "Malachi 3:10" },
+  { text: "Beloved, I pray that you may prosper in all things and be in health, just as your soul prospers.", source: "3 John 1:2" },
+  { text: "The blessing of the Lord brings wealth, without painful toil for it.", source: "Proverbs 10:22" },
+  { text: "Commit to the Lord whatever you do, and he will establish your plans.", source: "Proverbs 16:3" },
+  { text: "And God is able to bless you abundantly, so that in all things at all times, having all that you need, you will abound in every good work.", source: "2 Corinthians 9:8" },
+  { text: "Honor the Lord with your wealth, with the firstfruits of all your crops; then your barns will be filled to overflowing.", source: "Proverbs 3:9–10" },
+  { text: "Ask and it will be given to you; seek and you will find; knock and the door will be opened to you.", source: "Matthew 7:7" },
+  { text: "The Lord is my shepherd; I shall not want.", source: "Psalm 23:1" },
+  { text: "No weapon formed against you shall prosper.", source: "Isaiah 54:17" },
+  { text: "I can do all things through Christ who strengthens me.", source: "Philippians 4:13" },
+  { text: "Delight yourself in the Lord, and he will give you the desires of your heart.", source: "Psalm 37:4" },
+  { text: "I am worthy of everything good that comes my way. Abundance flows to me naturally.", source: "Daily Affirmation" },
+  { text: "I attract wealth, health, and happiness. My mind is a magnet for blessings.", source: "Daily Affirmation" },
+  { text: "I am enough. I have enough. I do enough.", source: "Daily Affirmation" },
+  { text: "Every day I grow stronger, wiser, and more aligned with my highest purpose.", source: "Daily Affirmation" },
+  { text: "I release all doubt and embrace the certainty that good things are coming my way.", source: "Daily Affirmation" },
+  { text: "I am grateful for the abundance already in my life, and open to more.", source: "Daily Affirmation" },
+  { text: "My potential is limitless. I am becoming the best version of myself.", source: "Daily Affirmation" },
+  { text: "Small steps taken daily lead to extraordinary destinations.", source: "Daily Reminder" },
+  { text: "Your future is created by what you do today, not tomorrow.", source: "Robert Kiyosaki" },
+  { text: "The secret of getting ahead is getting started.", source: "Mark Twain" },
+  { text: "You are never too old to set another goal or dream a new dream.", source: "C.S. Lewis" },
+  { text: "Success is not final, failure is not fatal; it is the courage to continue that counts.", source: "Winston Churchill" },
+  { text: "Believe you can and you're halfway there.", source: "Theodore Roosevelt" },
+  { text: "Do something today that your future self will thank you for.", source: "Daily Reminder" },
+  { text: "Rest if you must, but do not quit.", source: "Daily Reminder" },
+  { text: "One day or day one — you decide.", source: "Daily Reminder" },
+  { text: "Progress, not perfection.", source: "Daily Reminder" },
+];
+
+/* Pick today's quote by day-of-year — invisible clock, no display */
+function getDayIndex() {
+  const now   = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const day   = Math.floor((now - start) / 86400000);
+  return day % QUOTES.length;
+}
+
+const quoteText   = document.getElementById('quote-text');
+const quoteSource = document.getElementById('quote-source');
+
+function showQuote(idx) {
+  quoteText.classList.add('fading');
+  quoteSource.classList.add('fading');
+  setTimeout(() => {
+    const q = QUOTES[idx];
+    quoteText.textContent   = '\u201C' + q.text + '\u201D';
+    quoteSource.textContent = q.source;
+    quoteText.classList.remove('fading');
+    quoteSource.classList.remove('fading');
+  }, 300);
+}
+
+showQuote(getDayIndex());
+</script>
+</body>
+</html>
