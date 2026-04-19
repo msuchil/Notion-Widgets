@@ -11,7 +11,7 @@
 <body>
 
   <nav class="nav">
-    <a href="index.html" class="nav-logo">The Widget Studio</a>
+    <a href="index.html" class="nav-logo">Nirva's Widget Studio</a>
     <ul class="nav-links">
       <li><a href="index.html">Home</a></li>
       <li><a href="about.html">About</a></li>
@@ -38,6 +38,8 @@
       <button class="filter-btn" data-filter="clock">Clocks</button>
       <button class="filter-btn" data-filter="tracker">Trackers</button>
       <button class="filter-btn" data-filter="quote">Quotes</button>
+      <button class="filter-btn" data-filter="gallery">Gallery</button>
+      <button class="filter-btn" data-filter="calculator">Calculator</button>
     </div>
   </div>
 
@@ -46,20 +48,22 @@
     <div class="container">
       <div class="product-grid large" id="widget-grid">
 
+<!-- Flip Clock Widget -->
         <div class="product-card" data-tags="free clock">
           <div class="product-thumb" style="background:#ede6dd;">
-            <div class="thumb-inner clock-demo">
-              <span class="td-time">10:42</span>
-              <span class="td-date">Monday, April</span>
-            </div>
+            <iframe 
+              src="flip-clock.html" 
+              scrolling="no"
+              style="width:100%; height:160px; border:none; pointer-events:none;">
+            </iframe>
           </div>
           <div class="product-info">
             <div class="product-meta"><span class="badge free">Free</span><span class="badge-cat">Clock</span></div>
-            <h4>Minimal Clock Widget</h4>
-            <p>A soft, readable clock that fits any Notion aesthetic. Digital display with date.</p>
+            <h4>Flip Clock Widget</h4>
+            <p>A satisfying flip-style clock for your Notion sidebar.</p>
             <div class="product-actions">
               <span class="product-price">Free</span>
-              <a href="#" class="btn btn-sm btn-primary">Get it</a>
+              <a href="flip-clock.html" target = "_blank" class="btn btn-sm btn-primary">Preview</a>
             </div>
           </div>
         </div>
@@ -134,20 +138,19 @@
             </div>
           </div>
         </div>
-
+<!-- Side Panel Widget -->
         <div class="product-card" data-tags="free quote">
           <div class="product-thumb" style="background:#e2d8cc;">
             <div class="thumb-inner">
-              <span style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:#6b5744;text-align:center;line-height:1.4;">🌿<br/>Today is a<br/>fresh start.</span>
             </div>
           </div>
           <div class="product-info">
-            <div class="product-meta"><span class="badge free">Free</span><span class="badge-cat">Quote</span></div>
-            <h4>Affirmation Widget</h4>
-            <p>Gentle daily affirmations for your morning Notion routine.</p>
+            <div class="product-meta"><span class="badge free">Free</span><span class="badge-cat">Gallery</span></div>
+            <h4>Side Panel</h4>
+            <p>A thin photo/gif panel for your Notion sidebar.</p>
             <div class="product-actions">
               <span class="product-price">Free</span>
-              <a href="#" class="btn btn-sm btn-primary">Get it</a>
+              <a href="side-panel.html" target="_blank" class="btn btn-sm btn-primary">Preview</a>
             </div>
           </div>
         </div>
