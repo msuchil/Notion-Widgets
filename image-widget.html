@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Image Widget</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: -apple-system, sans-serif;
+}
+
+/* ── Square widget ── */
+.widget {
+  width: 50px;
+  height: 50px;
+  border-radius: 13px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  background: rgba(200,185,170,0.12);
+  border: 1px solid rgba(196,168,130,0.25);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.widget:hover { border-color: rgba(196,168,130,0.5); }
+.widget.has-image { cursor: default; }
+.widget.has-image:hover { border-color: rgba(196,168,130,0.25); }
+
+/* Subtle glow when in edit mode */
+.widget.edit-mode {
+  border-color: rgba(139,111,78,0.65);
+  box-shadow: 0 0 0 2px rgba(139,111,78,0.15);
+}
+
+/* ── Image viewport ── */
+.viewport {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  display: none;
+  /* LOCKED by default — completely inert */
+  cursor: default;
+  pointer-events: none;
+}
+.viewport.active { display: block; }
+/* Only interactive in edit mode */
+.widget.edit-mode .viewport { cursor: grab; pointer-events: all; }
+.widget.edit-mode .viewport:active { cursor: grabbing; }
+.viewport img {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+  max-width: none;
+}
+
+/* ── Empty state ── */
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.empty:hover .empty-icon { opacity: 0.7; }
+.empty-icon {
+  opacity: 0.35;
+  transition: opacity 0.2s;
+}
+.empty-icon svg {
+  width: 18px; height: 18px;
+  stroke: #8b6f4e; fill: none;
+  stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* ── Gear button — tiny, top-right corner ── */
+.gear-btn {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 14px; height: 14px;
+  border: none; background: none;
+  cursor: pointer; padding: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.55);
+  z-index: 30;
+  transition: color 0.2s, transform 0.3s;
+}
+.gear-btn svg { width: 11px; height: 11px; }
+.gear-btn:hover { color: rgba(255,255,255,0.95); }
+/* Gear rotates and warms up in edit mode */
+.gear-btn.edit-active {
+  color: rgba(255,210,160,0.95);
+  transform: rotate(60deg);
+}
+.widget.has-image .gear-btn { display: flex; }
+
+/* ── Gear dropdown — fixed, lives on body ── */
+.gear-panel {
+  position: fixed;
+  width: 130px;
+  background: rgba(255,255,255,0.97);
+  border-radius: 10px;
+  padding: 5px 0;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
+  border: 1px solid rgba(0,0,0,0.07);
+  z-index: 9999;
+  opacity: 0; pointer-events: none;
+  transform: scale(0.88) translateY(-4px);
+  transform-origin: top right;
+  transition: opacity 0.14s, transform 0.14s;
+  font-family: -apple-system, sans-serif;
+}
+.gear-panel.open {
+  opacity: 1; pointer-events: all;
+  transform: scale(1) translateY(0);
+}
+
+/* Section label */
+.gp-lbl {
+  font-size: 7px; font-weight: 700;
+  letter-spacing: 1.8px; text-transform: uppercase;
+  color: #ccc; padding: 5px 10px 2px;
+}
+
+/* Edit mode toggle row */
+.gp-edit-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 10px 4px;
+}
+.gp-edit-lbl {
+  font-size: 10px; font-weight: 600; color: #555;
+}
+/* Tiny toggle switch */
+.gp-toggle {
+  width: 26px; height: 14px;
+  background: #ddd; border-radius: 7px;
+  position: relative; cursor: pointer;
+  transition: background 0.2s; flex-shrink: 0;
+  border: none; padding: 0;
+}
+.gp-toggle.on { background: #8b6f4e; }
+.gp-toggle::after {
+  content: ''; position: absolute;
+  top: 2px; left: 2px;
+  width: 10px; height: 10px;
+  border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  transition: transform 0.18s;
+}
+.gp-toggle.on::after { transform: translateX(12px); }
+
+/* Dim controls when edit mode is off */
+.gear-panel.locked .gp-zoom,
+.gear-panel.locked #gp-reset,
+.gear-panel.locked #gp-swap,
+.gear-panel.locked #gp-remove {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Item */
+.gp-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  font-size: 10px; font-weight: 600;
+  color: #555; cursor: pointer;
+  transition: background 0.1s;
+  border: none; background: none; width: 100%; text-align: left;
+}
+.gp-item:hover { background: rgba(0,0,0,0.04); color: #333; }
+.gp-item svg {
+  width: 11px; height: 11px;
+  stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  flex-shrink: 0; opacity: 0.65;
+}
+.gp-item.danger { color: #c06060; }
+.gp-item.danger:hover { background: rgba(200,80,80,0.06); }
+
+/* Zoom row */
+.gp-zoom {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+}
+.gz-btn {
+  width: 18px; height: 18px;
+  border-radius: 50%; border: none;
+  background: rgba(0,0,0,0.07);
+  font-size: 13px; font-weight: 700; color: #555;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; line-height: 1; padding: 0;
+  transition: background 0.1s; flex-shrink: 0;
+}
+.gz-btn:hover { background: rgba(0,0,0,0.14); }
+.gz-pct {
+  font-size: 9px; font-weight: 600; color: #888;
+  min-width: 28px; text-align: center;
+  font-family: -apple-system, sans-serif;
+}
+.gp-div { height: 1px; background: rgba(0,0,0,0.06); margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<div class="widget" id="widget">
+  <!-- Empty state -->
+  <div class="empty" id="empty">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <circle cx="8.5" cy="8.5" r="1.3"/>
+        <polyline points="21,15 16,10 5,21"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Image viewport -->
+  <div class="viewport" id="viewport"></div>
+
+  <!-- Gear button -->
+  <button class="gear-btn" id="gear-btn" title="Options">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+</div>
+
+<input type="file" id="file-input" accept="image/*" style="display:none"/>
+
+<!-- Gear dropdown — on body to avoid overflow clipping -->
+<div class="gear-panel locked" id="gear-panel">
+  <!-- Edit mode toggle -->
+  <div class="gp-edit-row">
+    <span class="gp-edit-lbl">Edit mode</span>
+    <button class="gp-toggle" id="edit-toggle" title="Toggle edit mode"></button>
+  </div>
+  <div class="gp-div"></div>
+  <div class="gp-lbl">Zoom</div>
+  <div class="gp-zoom">
+    <button class="gz-btn" id="gz-out">−</button>
+    <span class="gz-pct" id="gz-pct">100%</span>
+    <button class="gz-btn" id="gz-in">+</button>
+  </div>
+  <div class="gp-div"></div>
+  <button class="gp-item" id="gp-reset">
+    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    Reset position
+  </button>
+  <button class="gp-item" id="gp-swap">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.3"/><polyline points="21,15 16,10 5,21"/></svg>
+    Swap image
+  </button>
+  <div class="gp-div"></div>
+  <button class="gp-item danger" id="gp-remove">
+    <svg viewBox="0 0 24 24"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    Remove
+  </button>
+</div>
+
+<script>
+const widget      = document.getElementById('widget');
+const empty       = document.getElementById('empty');
+const viewport    = document.getElementById('viewport');
+const gearBtn     = document.getElementById('gear-btn');
+const gearPanel   = document.getElementById('gear-panel');
+const editToggle  = document.getElementById('edit-toggle');
+const gzIn        = document.getElementById('gz-in');
+const gzOut       = document.getElementById('gz-out');
+const gzPct       = document.getElementById('gz-pct');
+const gpReset     = document.getElementById('gp-reset');
+const gpSwap      = document.getElementById('gp-swap');
+const gpRemove    = document.getElementById('gp-remove');
+const fileInput   = document.getElementById('file-input');
+
+let imgEl    = null;
+let scale    = 1;
+let ox = 0, oy = 0;
+let editMode = false;
+const ZMIN = 0.2, ZMAX = 6.0, ZSTEP = 0.25;
+
+/* ── Edit mode toggle ── */
+function setEditMode(on) {
+  editMode = on;
+  widget.classList.toggle('edit-mode', on);
+  gearBtn.classList.toggle('edit-active', on);
+  editToggle.classList.toggle('on', on);
+  gearPanel.classList.toggle('locked', !on);
+}
+
+/* ── Render ── */
+function render() {
+  if (!imgEl) return;
+  imgEl.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px)) scale(${scale})`;
+  gzPct.textContent = Math.round(scale * 100) + '%';
+}
+function resetView() { scale = 1; ox = 0; oy = 0; render(); }
+function zoom(d)     { scale = Math.min(ZMAX, Math.max(ZMIN, scale + d)); render(); }
+
+/* ── Gear panel — positioned via getBoundingClientRect ── */
+let gearOpen = false;
+function openGear() {
+  const r = gearBtn.getBoundingClientRect();
+  const pw = 130;
+  let left = r.right - pw;
+  let top  = r.bottom + 5;
+  if (left < 4) left = 4;
+  if (top + 180 > window.innerHeight) top = r.top - 185;
+  gearPanel.style.left = left + 'px';
+  gearPanel.style.top  = top  + 'px';
+  gearOpen = true;
+  gearPanel.classList.add('open');
+}
+function closeGear() {
+  gearOpen = false;
+  gearPanel.classList.remove('open');
+}
+
+gearBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  gearOpen ? closeGear() : openGear();
+});
+document.addEventListener('click', e => {
+  if (gearOpen && !gearPanel.contains(e.target) && e.target !== gearBtn) closeGear();
+});
+
+/* ── Edit toggle inside panel ── */
+editToggle.addEventListener('click', e => {
+  e.stopPropagation();
+  setEditMode(!editMode);
+});
+
+/* ── Gear actions (only work in edit mode via CSS pointer-events) ── */
+gzIn.addEventListener('click',  e => { e.stopPropagation(); zoom(ZSTEP); });
+gzOut.addEventListener('click', e => { e.stopPropagation(); zoom(-ZSTEP); });
+gpReset.addEventListener('click', e => { e.stopPropagation(); resetView(); closeGear(); });
+gpSwap.addEventListener('click',  e => { e.stopPropagation(); closeGear(); fileInput.click(); });
+gpRemove.addEventListener('click', e => {
+  e.stopPropagation(); closeGear();
+  if (imgEl) { imgEl.remove(); imgEl = null; }
+  viewport.classList.remove('active');
+  widget.classList.remove('has-image', 'edit-mode');
+  gearBtn.classList.remove('edit-active');
+  empty.style.display = '';
+  scale = 1; ox = 0; oy = 0;
+  editMode = false;
+});
+
+/* ── Scroll to zoom — only active in edit mode (viewport has pointer-events:none otherwise) ── */
+viewport.addEventListener('wheel', e => {
+  if (!editMode) return;
+  e.preventDefault();
+  zoom(e.deltaY < 0 ? ZSTEP : -ZSTEP);
+}, { passive: false });
+
+/* ── Mouse drag — only fires when viewport has pointer-events (edit mode) ── */
+let drag = false, sx, sy, sox, soy;
+viewport.addEventListener('mousedown', e => {
+  if (!editMode) return;
+  e.preventDefault();
+  drag = true; sx = e.clientX; sy = e.clientY; sox = ox; soy = oy;
+});
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  ox = sox + (e.clientX - sx); oy = soy + (e.clientY - sy); render();
+});
+window.addEventListener('mouseup', () => drag = false);
+
+/* ── Touch drag — only active in edit mode ── */
+let tx, ty, tox, toy;
+viewport.addEventListener('touchstart', e => {
+  if (!editMode) return;
+  const t = e.touches[0]; tx = t.clientX; ty = t.clientY; tox = ox; toy = oy;
+}, { passive: true });
+viewport.addEventListener('touchmove', e => {
+  if (!editMode) return;
+  const t = e.touches[0];
+  ox = tox + (t.clientX - tx); oy = toy + (t.clientY - ty); render();
+}, { passive: true });
+
+/* ── Load image ── */
+function loadFile(file) {
+  if (!file) return;
+  if (imgEl) { imgEl.remove(); imgEl = null; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    imgEl = document.createElement('img');
+    imgEl.src = ev.target.result;
+    imgEl.draggable = false;
+    imgEl.onload = () => {
+      const pw = widget.offsetWidth, ph = widget.offsetHeight;
+      const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
+      if (ratio > 1) { imgEl.style.height = ph + 'px'; imgEl.style.width = 'auto'; }
+      else           { imgEl.style.width  = pw + 'px'; imgEl.style.height = 'auto'; }
+      resetView();
+    };
+    viewport.appendChild(imgEl);
+    empty.style.display = 'none';
+    viewport.classList.add('active');
+    widget.classList.add('has-image');
+  };
+  reader.readAsDataURL(file);
+}
+
+fileInput.addEventListener('change', function() {
+  loadFile(this.files[0]);
+  this.value = '';
+});
+
+empty.addEventListener('click', () => fileInput.click());
+</script>
+</body>
+</html>
