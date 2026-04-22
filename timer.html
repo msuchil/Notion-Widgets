@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400&family=Nunito:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --brown-lt: #c4a882;
+  --brown-md: #8b6f4e;
+  --brown-dk: #5c3d1e;
+  --warm-gray:#b0a090;
+  --ring-bg:  rgba(196,168,130,0.18);
+}
+
+html, body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  font-family: 'Nunito', sans-serif;
+}
+
+.widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 10px 0 4px;
+}
+
+/* ── Arc ring ── */
+.ring-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+.ring-svg {
+  width: 200px;
+  height: 200px;
+  transform: rotate(-90deg);
+}
+.track {
+  fill: none;
+  stroke: var(--ring-bg);
+  stroke-width: 3;
+}
+.arc {
+  fill: none;
+  stroke: var(--brown-md);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 552.9;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear, stroke 0.6s ease;
+}
+.arc.urgent { stroke: #a0522d; }
+.tip-dot { fill: var(--brown-md); transition: fill 0.6s ease; }
+.tip-dot.urgent { fill: #a0522d; }
+
+/* ── Center input area ── */
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.time-fields {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+/* Each numeric field */
+.tf {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  font-weight: 400;
+  color: var(--brown-dk);
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 2ch;
+  text-align: center;
+  caret-color: var(--brown-md);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0;
+  /* hide spinners */
+  -moz-appearance: textfield;
+}
+.tf::-webkit-outer-spin-button,
+.tf::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+/* Subtle underline when editing */
+.tf:focus {
+  border-bottom: 1.5px solid var(--brown-lt);
+  color: var(--brown-md);
+}
+
+/* Read-only when running */
+.tf[readonly] {
+  cursor: default;
+  pointer-events: none;
+}
+
+.sep {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px;
+  font-weight: 400;
+  color: var(--brown-lt);
+  line-height: 1;
+  padding-bottom: 1px;
+  user-select: none;
+  opacity: 0.7;
+}
+
+/* Field labels */
+.field-labels {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-top: 2px;
+}
+.fl {
+  font-size: 7px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--brown-lt);
+  width: 2ch;
+  text-align: center;
+  user-select: none;
+}
+.fl-gap { width: 12px; } /* matches separator width */
+
+.time-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--brown-lt);
+  user-select: none;
+  margin-top: 2px;
+}
+
+/* ── Preset chips ── */
+.presets {
+  display: flex;
+  gap: 8px;
+}
+.preset {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--warm-gray);
+  padding: 5px 12px;
+  border: 1px solid rgba(196,168,130,0.35);
+  border-radius: 20px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.preset:hover { color: var(--brown-md); border-color: var(--brown-md); }
+.preset.active {
+  background: var(--brown-md);
+  color: #fff8f0;
+  border-color: var(--brown-md);
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ctrl-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(196,168,130,0.5);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brown-md);
+  transition: all 0.18s;
+}
+.ctrl-btn:hover { background: var(--brown-md); border-color: var(--brown-md); color: #fff8f0; }
+.ctrl-btn:active { transform: scale(0.94); }
+.ctrl-btn svg { width: 14px; height: 14px; }
+
+@keyframes pulse-ring { 0%,100%{opacity:1}50%{opacity:0.6} }
+.arc.running { animation: pulse-ring 3s ease-in-out infinite; }
+@keyframes done-fade { 0%{opacity:1}50%{opacity:0.3}100%{opacity:1} }
+.arc.done { animation: done-fade 1.2s ease-in-out 3; }
+
+.ornament {
+  font-size: 11px;
+  color: var(--brown-lt);
+  opacity: 0.45;
+  letter-spacing: 5px;
+  user-select: none;
+}
+</style>
+</head>
+<body>
+
+<div class="widget">
+
+  <div class="ornament">· · ·</div>
+
+  <div class="ring-wrap">
+    <svg class="ring-svg" viewBox="0 0 200 200">
+      <circle class="track" cx="100" cy="100" r="88"/>
+      <circle class="arc" id="arc" cx="100" cy="100" r="88"/>
+      <circle class="tip-dot" id="tip-dot" cx="188" cy="100" r="4"/>
+    </svg>
+
+    <div class="center">
+      <div class="time-fields">
+        <input class="tf" id="tf-h"  type="number" min="0" max="99" value="0"  placeholder="00" title="Hours"/>
+        <span class="sep">:</span>
+        <input class="tf" id="tf-m"  type="number" min="0" max="59" value="25" placeholder="00" title="Minutes"/>
+        <span class="sep">:</span>
+        <input class="tf" id="tf-s"  type="number" min="0" max="59" value="0"  placeholder="00" title="Seconds"/>
+      </div>
+      <div class="field-labels">
+        <span class="fl">hr</span>
+        <span class="fl-gap"></span>
+        <span class="fl">min</span>
+        <span class="fl-gap"></span>
+        <span class="fl">sec</span>
+      </div>
+      <div class="time-label" id="time-label">ready</div>
+    </div>
+  </div>
+
+  <div class="presets">
+    <button class="preset" data-h="0" data-m="5"  data-s="0">5 min</button>
+    <button class="preset active" data-h="0" data-m="25" data-s="0">25 min</button>
+    <button class="preset" data-h="1" data-m="0"  data-s="0">1 hr</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="reset-btn" title="Reset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+        <path d="M3 3v5h5"/>
+      </svg>
+    </button>
+    <button class="ctrl-btn" id="play-btn" title="Start" style="width:46px;height:46px;">
+      <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:16px;height:16px;">
+        <polygon points="5,3 19,12 5,21"/>
+      </svg>
+      <svg id="pause-icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="width:16px;height:16px;display:none;">
+        <rect x="6" y="4" width="4" height="16" rx="1"/>
+        <rect x="14" y="4" width="4" height="16" rx="1"/>
+      </svg>
+    </button>
+    <button class="ctrl-btn" id="add-btn" title="+1 min">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  </div>
+
+</div>
+
+<script>
+const CIRC = 2 * Math.PI * 88;
+
+const arcEl    = document.getElementById('arc');
+const tipDotEl = document.getElementById('tip-dot');
+const timeLabel= document.getElementById('time-label');
+const playBtn  = document.getElementById('play-btn');
+const playIcon = document.getElementById('play-icon');
+const pauseIcon= document.getElementById('pause-icon');
+const resetBtn = document.getElementById('reset-btn');
+const addBtn   = document.getElementById('add-btn');
+
+const tfH = document.getElementById('tf-h');
+const tfM = document.getElementById('tf-m');
+const tfS = document.getElementById('tf-s');
+const fields = [tfH, tfM, tfS];
+
+let totalSecs = 25 * 60;
+let remaining = totalSecs;
+let running   = false;
+let interval  = null;
+
+function pad(n) { return String(Math.max(0, n)).padStart(2, '0'); }
+
+/* Read H/M/S fields → total seconds */
+function fieldsToSecs() {
+  const h = Math.min(99, Math.max(0, parseInt(tfH.value) || 0));
+  const m = Math.min(59, Math.max(0, parseInt(tfM.value) || 0));
+  const s = Math.min(59, Math.max(0, parseInt(tfS.value) || 0));
+  return h * 3600 + m * 60 + s;
+}
+
+/* Write seconds → fields */
+function secsToFields(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  tfH.value = pad(h);
+  tfM.value = pad(m);
+  tfS.value = pad(s);
+}
+
+function updateArc() {
+  const frac = totalSecs > 0 ? remaining / totalSecs : 0;
+  arcEl.style.strokeDashoffset = CIRC * (1 - frac);
+
+  const angle = frac * 2 * Math.PI - Math.PI / 2;
+  const r = 88;
+  tipDotEl.setAttribute('cx', (100 + r * Math.cos(angle)).toFixed(2));
+  tipDotEl.setAttribute('cy', (100 + r * Math.sin(angle)).toFixed(2));
+
+  const urgent = remaining <= 60 && remaining > 0;
+  arcEl.classList.toggle('urgent', urgent);
+  tipDotEl.classList.toggle('urgent', urgent);
+}
+
+function render() {
+  secsToFields(remaining);
+  updateArc();
+
+  if (remaining === 0) {
+    timeLabel.textContent = 'done';
+    arcEl.classList.remove('running');
+    arcEl.classList.add('done');
+  } else if (running) {
+    timeLabel.textContent = 'focus';
+    arcEl.classList.add('running');
+    arcEl.classList.remove('done');
+  } else {
+    timeLabel.textContent = remaining === totalSecs ? 'ready' : 'paused';
+    arcEl.classList.remove('running', 'done');
+  }
+}
+
+function setPlaying(state) {
+  running = state;
+  playIcon.style.display  = running ? 'none' : '';
+  pauseIcon.style.display = running ? '' : 'none';
+  /* Lock/unlock fields */
+  fields.forEach(f => {
+    if (running) f.setAttribute('readonly', '');
+    else         f.removeAttribute('readonly');
+  });
+}
+
+function startTimer() {
+  if (remaining <= 0) return;
+  setPlaying(true);
+  interval = setInterval(() => {
+    remaining--;
+    render();
+    if (remaining <= 0) { clearInterval(interval); setPlaying(false); }
+  }, 1000);
+  render();
+}
+
+function pauseTimer() {
+  clearInterval(interval);
+  setPlaying(false);
+  render();
+}
+
+function resetTimer(h, m, s) {
+  clearInterval(interval);
+  setPlaying(false);
+  arcEl.classList.remove('running', 'done', 'urgent');
+  tipDotEl.classList.remove('urgent');
+  if (h !== undefined) {
+    totalSecs = h * 3600 + m * 60 + s;
+  } else {
+    totalSecs = fieldsToSecs();
+  }
+  if (totalSecs === 0) totalSecs = 25 * 60;
+  remaining = totalSecs;
+  tipDotEl.setAttribute('cx', '188');
+  tipDotEl.setAttribute('cy', '100');
+  render();
+}
+
+/* ── Field input handling ── */
+fields.forEach((field, i) => {
+  /* Select all text on focus for easy overwrite */
+  field.addEventListener('focus', () => field.select());
+
+  field.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      resetTimer();
+      field.blur();
+    }
+    /* Tab / Shift+Tab cycle between fields */
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const next = e.shiftKey ? fields[i - 1] : fields[i + 1];
+      if (next) { next.focus(); next.select(); }
+    }
+    /* Arrow up/down nudge */
+    if (e.key === 'ArrowUp')   { e.preventDefault(); nudge(field, 1); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); nudge(field, -1); }
+  });
+
+  /* Auto-advance to next field after 2 digits typed */
+  field.addEventListener('input', () => {
+    const raw = field.value.replace(/\D/g, '');
+    const max = field === tfH ? 99 : 59;
+    const val = Math.min(parseInt(raw) || 0, max);
+    field.value = raw.length ? String(val).padStart(raw.length > 1 ? 2 : 1, '0') : '';
+
+    /* Auto-advance when 2 digits entered */
+    if (raw.length >= 2 && i < fields.length - 1) {
+      fields[i + 1].focus();
+      fields[i + 1].select();
+    }
+
+    /* Clear preset active state when user types custom time */
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+    /* Update totalSecs live so arc reflects new target on reset */
+    totalSecs = fieldsToSecs() || 25 * 60;
+    remaining = totalSecs;
+    updateArc();
+    timeLabel.textContent = 'ready';
+  });
+
+  /* Enforce max on blur and pad to 2 digits */
+  field.addEventListener('blur', () => {
+    const max = field === tfH ? 99 : 59;
+    const val = Math.min(parseInt(field.value) || 0, max);
+    field.value = pad(val);
+    totalSecs = fieldsToSecs() || 25 * 60;
+    remaining = totalSecs;
+    updateArc();
+  });
+});
+
+function nudge(field, delta) {
+  const max = field === tfH ? 99 : 59;
+  const val = Math.min(max, Math.max(0, (parseInt(field.value) || 0) + delta));
+  field.value = pad(val);
+  totalSecs = fieldsToSecs() || 25 * 60;
+  remaining = totalSecs;
+  updateArc();
+}
+
+/* ── Control buttons ── */
+playBtn.addEventListener('click', () => {
+  if (remaining <= 0) { resetTimer(); return; }
+  running ? pauseTimer() : startTimer();
+});
+
+resetBtn.addEventListener('click', () => resetTimer());
+
+addBtn.addEventListener('click', () => {
+  remaining = Math.min(remaining + 60, 99 * 3600);
+  if (remaining > totalSecs) totalSecs = remaining;
+  render();
+});
+
+document.querySelectorAll('.preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    resetTimer(
+      parseInt(btn.dataset.h),
+      parseInt(btn.dataset.m),
+      parseInt(btn.dataset.s)
+    );
+  });
+});
+
+/* ── Init ── */
+arcEl.style.strokeDasharray  = CIRC;
+arcEl.style.strokeDashoffset = 0;
+render();
+</script>
+</body>
+</html>
